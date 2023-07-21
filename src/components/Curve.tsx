@@ -1,26 +1,34 @@
+import { useState } from "react";
 import { LinePath } from "@visx/shape";
 import { scaleLinear, scaleTime } from "@visx/scale";
 import { extent, max } from "@visx/vendor/d3-array";
 import { withScreenSize } from "@visx/responsive";
 import { Group } from "@visx/group";
-//import { EditableAnnotation, Label, Connector } from "@visx/annotation";
+import { localPoint } from "@visx/event";
+import { Tooltip } from "@visx/tooltip";
 import { DateValue } from "@visx/mock-data/lib/generators/genDateValue";
-import {
-  //curveStepBefore,
-  curveStep,
-  //curveStepAfter,
-  //curveBasis,
-} from "@visx/curve";
+import { curveStep } from "@visx/curve";
 import { MarkerX, MarkerArrow, MarkerCircle } from "@visx/marker";
 
 interface CurveProps {
   screenWidth: number;
 }
+
+interface DataPoint {
+  date: Date;
+  value: number; // Customize this based on your data structure
+}
+
+interface ToolTipData {
+  data: DataPoint;
+  left: number;
+  top: number;
+}
+
 const getX = (d: DateValue) => d.date;
 
 const getY = (d: DateValue) => d.value;
 
-// Define your data
 const data = [
   { date: "2023-07-20T09:29:30.522Z", value: 1427 },
   { date: "2023-07-20T10:29:30.522Z", value: 723 },
@@ -52,40 +60,14 @@ const data = [
   date: new Date(e.date),
 }));
 
-{
-  /*<EditableAnnotation
-        key={j}
-        x={xScale(getX(d))}
-        y={yScale(getY(d))}
-        width={width}
-        height={200}
-        canEditLabel={true}
-        canEditSubject={false}
-        dx={50} // x offset of label from subject
-        dy={50} // y offset of label from subjec
-      >
-        <Connector />
-        <Label
-          backgroundFill="white"
-          showAnchorLine={true}
-          anchorLineStroke={"red"}
-          fontColor={"red"}
-          subtitle={"subtitle"}
-          title={"title"}
-          width={100}
-        />
-    </EditableAnnotation>*/
-}
-
 const C = (e: unknown) => {
+  const [tooltipData, setTooltipData] = useState<ToolTipData | null>(null);
   const width = (e as CurveProps).screenWidth;
   const height = 250;
-
   const markerStart = "url(#marker-x)";
   const markerEnd = "url(#marker-arrow)";
   const markerMid = "url(#marker-circle)";
 
-  // Define the scales for your x and y axes
   const xScale = scaleTime<number>({
     domain: extent(data, getX) as [Date, Date],
   });
@@ -94,52 +76,77 @@ const C = (e: unknown) => {
     domain: [0, max(data, getY) as number],
   });
 
+  const handleMouseEnter = (
+    event: React.MouseEvent<SVGPathElement, MouseEvent>
+  ) => {
+    const { x, y } = localPoint(event) || { x: 0, y: 0 };
+    const xScaleInverse = scaleLinear({
+      range: xScale.domain(),
+      domain: xScale.range(),
+    });
+    const mouseXValue = xScaleInverse(x);
+    const closestDataPoint = data.reduce((acc, d) => {
+      const xValue = getX(d);
+      return Math.abs(Number(xValue) - Number(mouseXValue)) <
+        Math.abs(Number(getX(acc)) - Number(mouseXValue))
+        ? d
+        : acc;
+    }, data[0]);
+
+    setTooltipData({
+      data: closestDataPoint,
+      left: x,
+      top: y,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipData(null);
+  };
+
   xScale.range([0, width - 50]);
   yScale.range([200, 0]);
 
-  /*const Points = () =>
-    data.map((d, j) =>
-      j < data.length - 1 && j > 0 ? (
-        <circle
-          key={j}
-          r={3}
-          cx={xScale(getX(d))}
-          cy={yScale(getY(d))}
-          stroke="rgba(33,33,33,0.5)"
-          strokeWidth={2}
-          fill="transparent"
-        />
-      ) : null
-    );*/
-
   return (
-    <svg width={width} height={height}>
-      <rect width={width} height={height} fill="#efefef" rx={14} ry={14} />
-      <Group left={13} top={13}>
-        <MarkerX
-          id="marker-x"
-          stroke="#333"
-          size={22}
-          strokeWidth={4}
-          markerUnits="userSpaceOnUse"
-        />
-        <MarkerCircle id="marker-circle" fill="#333" size={3} refX={2} />
-        <MarkerArrow id="marker-arrow" fill="#333" refX={2} size={6} />
-        <LinePath
-          data={data}
-          curve={curveStep}
-          x={(d) => xScale(getX(d)) ?? 0}
-          y={(d) => yScale(getY(d)) ?? 0}
-          stroke="#333"
-          shapeRendering="geometricPrecision"
-          strokeWidth={2}
-          markerMid={markerMid}
-          markerStart={markerStart}
-          markerEnd={markerEnd}
-        />
-        {/*<Points />*/}
-      </Group>
-    </svg>
+    <div>
+      <svg width={width} height={height}>
+        <rect width={width} height={height} fill="#efefef" rx={14} ry={14} />
+        <Group left={13} top={13}>
+          <MarkerX
+            id="marker-x"
+            stroke="#333"
+            size={22}
+            strokeWidth={4}
+            markerUnits="userSpaceOnUse"
+          />
+          <MarkerCircle id="marker-circle" fill="#333" size={3} refX={2} />
+          <MarkerArrow id="marker-arrow" fill="#333" refX={2} size={6} />
+          <LinePath
+            data={data}
+            curve={curveStep}
+            x={(d) => xScale(getX(d)) ?? 0}
+            y={(d) => yScale(getY(d)) ?? 0}
+            stroke="#333"
+            shapeRendering="geometricPrecision"
+            strokeWidth={2}
+            markerStart={markerStart}
+            markerMid={markerMid}
+            markerEnd={markerEnd}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          />
+          {/*<Points />*/}
+        </Group>
+      </svg>
+      {/* Tooltip */}
+      <Tooltip
+        top={tooltipData?.top}
+        left={tooltipData?.left}
+        style={{ pointerEvents: "none", position: "absolute" }}
+      >
+        {JSON.stringify(tooltipData?.data, null, 2)}
+      </Tooltip>
+    </div>
   );
 };
 
