@@ -3,13 +3,13 @@ import { scaleLinear, scaleTime } from "@visx/scale";
 import { extent, max } from "@visx/vendor/d3-array";
 import { withScreenSize } from "@visx/responsive";
 import { Group } from "@visx/group";
-import { EditableAnnotation, Label, Connector } from "@visx/annotation";
+//import { EditableAnnotation, Label, Connector } from "@visx/annotation";
 import { DateValue } from "@visx/mock-data/lib/generators/genDateValue";
 import {
-  curveStepBefore,
+  //curveStepBefore,
   curveStep,
-  curveStepAfter,
-  curveBasis,
+  //curveStepAfter,
+  //curveBasis,
 } from "@visx/curve";
 import { MarkerX, MarkerArrow, MarkerCircle } from "@visx/marker";
 
@@ -97,7 +97,7 @@ const C = (e: unknown) => {
   xScale.range([0, width - 50]);
   yScale.range([200, 0]);
 
-  const Points = () =>
+  /*const Points = () =>
     data.map((d, j) =>
       j < data.length - 1 && j > 0 ? (
         <circle
@@ -110,7 +110,7 @@ const C = (e: unknown) => {
           fill="transparent"
         />
       ) : null
-    );
+    );*/
 
   return (
     <svg width={width} height={height}>
