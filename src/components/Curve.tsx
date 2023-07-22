@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LinePath } from "@visx/shape";
 import { scaleLinear, scaleTime } from "@visx/scale";
 import { extent, max } from "@visx/vendor/d3-array";
-import { withScreenSize } from "@visx/responsive";
+import { withParentSize } from "@visx/responsive";
 import { Group } from "@visx/group";
 import { localPoint } from "@visx/event";
 import { Tooltip } from "@visx/tooltip";
@@ -10,26 +10,35 @@ import { DateValue } from "@visx/mock-data/lib/generators/genDateValue";
 import { curveStep } from "@visx/curve";
 import { MarkerX, MarkerArrow, MarkerCircle } from "@visx/marker";
 
+/**
+ * Props for the Curve component.
+ */
 interface CurveProps {
-  screenWidth: number;
+  parentWidth: number;
+  parentHeight: number;
 }
 
+/**
+ * Data point representing a date and a numeric value.
+ */
 interface DataPoint {
   date: Date;
-  value: number; // Customize this based on your data structure
+  value: number;
 }
 
+/**
+ * Data for the tooltip.
+ */
 interface ToolTipData {
   data: DataPoint;
   left: number;
   top: number;
 }
 
-const getX = (d: DateValue) => d.date;
-
-const getY = (d: DateValue) => d.value;
-
-const data = [
+/**
+ * Data to be plotted in the curve chart.
+ */
+const data: DataPoint[] = [
   { date: "2023-07-20T09:29:30.522Z", value: 1427 },
   { date: "2023-07-20T10:29:30.522Z", value: 723 },
   { date: "2023-07-20T11:29:30.522Z", value: 485 },
@@ -60,10 +69,29 @@ const data = [
   date: new Date(e.date),
 }));
 
-const C = (e: unknown) => {
+/**
+ * Extracts the x-coordinate of a data point.
+ * @param d - The data point.
+ * @returns The x-coordinate of the data point.
+ */
+const getX = (d: DateValue) => d.date;
+
+/**
+ * Extracts the y-coordinate of a data point.
+ * @param d - The data point.
+ * @returns The y-coordinate of the data point.
+ */
+const getY = (d: DateValue) => d.value;
+
+/**
+ * Curve component for rendering the line chart.
+ * @param props - The Curve component props.
+ * @returns The rendered Curve component.
+ */
+const CurveComponent = (e: unknown) => {
   const [tooltipData, setTooltipData] = useState<ToolTipData | null>(null);
-  const width = (e as CurveProps).screenWidth;
-  const height = 250;
+  const width = (e as CurveProps).parentWidth;
+  const height = (e as CurveProps).parentHeight;
   const markerStart = "url(#marker-x)";
   const markerEnd = "url(#marker-arrow)";
   const markerMid = "url(#marker-circle)";
@@ -76,6 +104,10 @@ const C = (e: unknown) => {
     domain: [0, max(data, getY) as number],
   });
 
+  /**
+   * Handles mouse enter event on the line path.
+   * @param event - The mouse enter event.
+   */
   const handleMouseEnter = (
     event: React.MouseEvent<SVGPathElement, MouseEvent>
   ) => {
@@ -100,18 +132,26 @@ const C = (e: unknown) => {
     });
   };
 
+  /**
+   * Handles mouse leave event on the line path.
+   */
   const handleMouseLeave = () => {
     setTooltipData(null);
   };
 
-  xScale.range([0, width - 50]);
-  yScale.range([200, 0]);
+  const offset = {
+    x: 48,
+    y: 48,
+  };
+
+  xScale.range([0, width - offset.x]);
+  yScale.range([height - offset.y, 0]);
 
   return (
-    <div>
+    <>
       <svg width={width} height={height}>
-        <rect width={width} height={height} fill="#efefef" rx={14} ry={14} />
-        <Group left={13} top={13}>
+        <rect width={width} height={height} fill="#efefef" />
+        <Group left={offset.x / 2} top={offset.y / 2}>
           <MarkerX
             id="marker-x"
             stroke="#333"
@@ -124,6 +164,7 @@ const C = (e: unknown) => {
           <LinePath
             data={data}
             curve={curveStep}
+            height={height}
             x={(d) => xScale(getX(d)) ?? 0}
             y={(d) => yScale(getY(d)) ?? 0}
             stroke="#333"
@@ -135,10 +176,18 @@ const C = (e: unknown) => {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           />
-          {/*<Points />*/}
+          <Group>
+            {data.map((point, index) => (
+              <circle
+                key={`point-${index}`}
+                r={3}
+                cx={xScale(getX(point))}
+                cy={yScale(getY(point))}
+              />
+            ))}
+          </Group>
         </Group>
       </svg>
-      {/* Tooltip */}
       <Tooltip
         top={tooltipData?.top}
         left={tooltipData?.left}
@@ -146,8 +195,8 @@ const C = (e: unknown) => {
       >
         {JSON.stringify(tooltipData?.data, null, 2)}
       </Tooltip>
-    </div>
+    </>
   );
 };
 
-export const Curve = withScreenSize(C);
+export const Curve = withParentSize(CurveComponent);
